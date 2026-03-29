@@ -1,27 +1,38 @@
 import httpx
+import logging
 from app.core.config import settings
 from app.core.redis import client
 from app.schemas.weather import WeatherResponse
 
+logger = logging.getLogger(__name__)
+
+
 async def get_weather(city: str) -> WeatherResponse | None:
-    cached = await client.get(city)
-    if cached:
-        return WeatherResponse.model_validate_json(cached)
+    cache_key = f"weather:{city.lower()}"
 
-    url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={settings.OPENWEATHER_API_KEY}&units=metric'
+    cached_data = await client.get(cache_key)
+    if cached_data:
+        logger.info(f"CACHE HIT - {city}")
+        return WeatherResponse.model_validate_json(cached_data)
 
-    async with httpx.AsyncClient() as http:
-        response = await http.get(url)
-        if response.status_code != 200:
-            return None
-        data = response.json()
+    logger.info(f"CACHE MISS - {city}")
+    try:
+        async with httpx.AsyncClient(timeout=5) as http:
+            response = await http.get(
+                "https://api.openweathermap.org/data/2.5/weather",
+                params={"q": city,
+                        "appid": settings.openweather_api_key,
+                        "units": "metric"
+                    },
+            )
+            response.raise_for_status()
+            data = response.json()
 
-    result = WeatherResponse(
-        city=data["name"],
-        temperature=f"{data['main']['temp']}°C",
-        pressure=f"{round(data['main']['pressure'] * 0.750064)} мм рт.ст.",
-        wind_speed=f"{data['wind']['speed']} м/с"
-    )
+        result = WeatherResponse(**data)
+        await client.setex(cache_key, settings.cache_expire, result.model_dump_json())
+        logger.info(f"Cached weather for {city}")
+        return result
 
-    await client.setex(city, settings.CACHE_EXPIRE, result.model_dump_json())
-    return result
+    except Exception as e:
+        logger.error(f"Error {e}")
+        return None

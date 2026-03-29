@@ -1,7 +1,22 @@
-from pydantic import BaseModel,Field, field_validatori
+from pydantic import BaseModel
+
+class Main(BaseModel):
+    temp: float
+    feels_like: float
+    humidity: float
+    pressure: float
+
+class Wind(BaseModel):
+    speed: float
+
+class Weather(BaseModel):
+    description: str
 
 class WeatherResponse(BaseModel):
-    city: str
-    temperature: float
-    pressure: int
-    wind_speed: float
+    name: str
+    main: Main
+    wind: Wind
+    weather: list[Weather]
+
+
+

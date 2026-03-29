@@ -2,9 +2,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    OPENWEATHER_API_KEY: str
-    REDIS_URL: str
-    CACHE_EXPIRE: int
+    openweather_api_key: str
+    redis_url: str
+    cache_expire: int
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
