@@ -6,7 +6,7 @@ router = APIRouter(prefix="/weather", tags=["weather"])
 
 
 @router.get("/{city}", response_model=WeatherResponse)
-async def weather(city: str):
+async def weather(city: str) -> WeatherResponse:
     result = await get_weather(city)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Город {city} не найден")
